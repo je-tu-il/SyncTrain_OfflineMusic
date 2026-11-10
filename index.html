@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>SyncTrain OfflineMusic — Synchronisation Hors-Ligne & Lecteur Audio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-primary: #090e18; --bg-card: #111828; --border: #1e293f; --accent: #0284c7; --text-main: #f8fafc; --text-muted: #94a3b8; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-primary); color: var(--text-main); padding: 24px; }
+        header { border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 24px; }
+        h1 { font-size: 20px; font-weight: 800; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+        .track-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; cursor: pointer; }
+        .track-row:hover { color: #38bdf8; }
+        .player-bar { background: #0c1322; border-radius: 12px; border: 1px solid var(--border); padding: 16px; margin-top: 16px; text-align: center; }
+        .btn-ctrl { background: #1e293b; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; margin: 0 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>SyncTrain OfflineMusic</h1>
+        <p style="font-size: 13px; color: var(--text-muted);">Fork Syncthing / SyncTrain avec Mode Proximité Hors-Ligne & Lecteur Audio Direct Aléatoire</p>
+    </header>
+
+    <div class="grid">
+        <div class="card">
+            <h2 style="font-size: 16px; margin-bottom: 8px;">Statut Réseau & Synchronisation Proximité</h2>
+            <div style="font-size: 13px; color: #10b981; font-weight: 700;">● Mode Proximité Décentralisé : Actif</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Fonctionne 100% sans connexion internet via réseau local ad-hoc.</div>
+
+            <div class="player-bar">
+                <div style="font-size: 11px; color: var(--text-muted);">En lecture aléatoire (Shuffle) :</div>
+                <div style="font-size: 16px; font-weight: 800; margin: 6px 0;" id="nowPlaying">La fin des box TV ?</div>
+                <div>
+                    <button class="btn-ctrl" onclick="alert('Morceau précédent')">⏮</button>
+                    <button class="btn-ctrl" style="background: #38bdf8; color: black;" onclick="togglePlay()">⏯ Play / Pause</button>
+                    <button class="btn-ctrl" onclick="randomTrack()">🔀 Aléatoire</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 16px; margin-bottom: 12px;">Pistes du Dossier Synchronisé (E:\Musique)</h2>
+            <div id="trackList"></div>
+        </div>
+    </div>
+
+    <script>
+        let tracks = [];
+        async function load() {
+            const res = await fetch('/api/sync_music');
+            const d = await res.json();
+            tracks = d.tracks;
+            const tl = document.getElementById('trackList');
+            tl.innerHTML = tracks.map(t => `
+                <div class="track-row" onclick="playTrack('${t.title}')">
+                    <div>
+                        <strong>${t.title}</strong><br>
+                        <span style="font-size: 11px; color: #94a3b8;">${t.artist}</span>
+                    </div>
+                    <div>${t.duration}</div>
+                </div>
+            `).join('');
+        }
+
+        function playTrack(title) { document.getElementById('nowPlaying').innerText = title; }
+        function randomTrack() {
+            const t = tracks[Math.floor(Math.random() * tracks.length)];
+            playTrack(t.title);
+        }
+        function togglePlay() { alert('Lecture / Pause'); }
+        window.onload = load;
+    </script>
+</body>
+</html>
