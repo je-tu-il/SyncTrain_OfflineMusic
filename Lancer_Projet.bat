@@ -158,10 +158,9 @@ echo [*] Ouverture automatique du navigateur : http://localhost:8094...
 start "" cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:8094"
 echo [*] Demarrage de server.py...
 "%PY_BIN%" "%~dp0server.py"
-if errorlevel 1 (
-    echo.
-    echo [!] Le programme s'est arrete avec une erreur (Code: %errorlevel%).
-    pause
-    exit /b %errorlevel%
-)
-exit /b 0
+set "EXIT_CODE=%errorlevel%"
+if "%EXIT_CODE%"=="0" exit /b 0
+echo.
+echo [!] Le programme s'est arrete avec une erreur (Code: %EXIT_CODE%).
+pause
+exit /b %EXIT_CODE%

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>SyncTrain OfflineMusic — Compagnon Local</title>
+  <style>
+    :root {
+      --bg: #090e18;
+      --card: #111828;
+      --border: #1e293f;
+      --accent: #38bdf8;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      line-height: 1.5;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 20px; margin-bottom: 6px; }
+    h2 { font-size: 16px; margin-bottom: 10px; color: var(--accent); }
+    p { font-size: 13px; color: var(--muted); }
+    .badge {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    ul { padding-left: 18px; margin-top: 8px; font-size: 13px; color: var(--muted); }
+    li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>SyncTrain OfflineMusic</h1>
+    <p>Compagnon iOS hors-ligne prêt pour l'avion, le train et la synchro locale.</p>
+    <span class="badge">● Mode Hors-Ligne 100% Autonome</span>
+  </div>
+  <div class="card">
+    <h2>Comment connecter votre ordinateur</h2>
+    <ul>
+      <li>Lancez <code>server.py</code> sur votre PC (port <code>8094</code>).</li>
+      <li>Connectez votre iPhone et votre PC sur le même Wi-Fi ou partage local.</li>
+      <li>Renseignez l'adresse IP locale (ex : <code>http://192.168.1.25:8094</code>) dans l'onglet Synchronisation.</li>
+      <li>Vous pouvez aussi importer vos fichiers audio directement depuis l'app Fichiers dans l'onglet Lecteur.</li>
+    </ul>
+  </div>
+</body>
+</html>

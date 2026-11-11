@@ -33,3 +33,8 @@ models_gguf/
 .env
 .DS_Store
 Thumbs.db
+build_output/
+Payload/
+*.ipa
+ios/*.xcodeproj/
+ios/build/

@@ -19,7 +19,7 @@ SYNC_STATUS = {
     "internet_required": False,
     "peers_nearby": 2,
     "last_sync": "À l'instant (Local 100%)",
-    "synced_folder": "E:\Musique"
+    "synced_folder": "E:\\Musique"
 }
 
 def handle_get(handler, parsed):

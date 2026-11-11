@@ -1,0 +1,78 @@
+name: Build & Release iOS IPA
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Generate Xcode project with XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          cd ios
+          xcodegen generate
+
+      - name: 🔨 Build app without signing
+        run: |
+          PROJECT_PATH=$(find ios -name "*.xcodeproj" | head -n 1)
+          SCHEME=$(xcodebuild -project "$PROJECT_PATH" -list -json | jq -r '.project.schemes[0]')
+          xcodebuild clean build \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build_output \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: 📦 Package into IPA
+        run: |
+          mkdir -p Payload
+          cp -r build_output/Build/Products/Release-iphoneos/*.app Payload/
+          zip -r SyncTrain.ipa Payload
+
+      - name: 📤 Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SyncTrain-unsigned
+          path: SyncTrain.ipa
+
+      - name: 🏷️ Determine Tag
+        id: vars
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=v1.0.0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 🚀 Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: "SyncTrain OfflineMusic ${{ steps.vars.outputs.tag }}"
+          body: |
+            ## 🎧 SyncTrain OfflineMusic iOS Release
+
+            Binaire iOS non signé prêt pour l'installation directe par sideloading :
+            - 📱 **`SyncTrain.ipa`** : Application complète pour iPhone & iPad (iOS 16+, lecture audio en arrière-plan, import hors-ligne & compagnon Wi-Fi local).
+            - 🛠️ Compatible avec **AltStore**, **SideStore**, **Sideloadly** ou **TrollStore**.
+          files: SyncTrain.ipa
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
