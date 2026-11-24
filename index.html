@@ -2,8 +2,8 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>SyncTrain OfflineMusic — Synchronisation Hors-Ligne & Lecteur Audio</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SyncTrain OfflineMusic · Bibliothèque locale</title>
     <style>
         :root { --bg-primary: #090e18; --bg-card: #111828; --border: #1e293f; --accent: #0284c7; --text-main: #f8fafc; --text-muted: #94a3b8; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,61 +16,104 @@
         .track-row:hover { color: #38bdf8; }
         .player-bar { background: #0c1322; border-radius: 12px; border: 1px solid var(--border); padding: 16px; margin-top: 16px; text-align: center; }
         .btn-ctrl { background: #1e293b; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; margin: 0 4px; cursor: pointer; }
+        :root { color-scheme: dark; --bg-primary: #101615; --bg-card: #18211f; --border: #354541; --text-muted: #b3c5be; }
+        body { max-width: 72rem; margin-inline: auto; padding: clamp(1rem, 4vw, 3rem); font-family: system-ui, sans-serif; }
+        header { padding-block: 1rem 1.5rem; }
+        header p { margin-top: .5rem; }
+        h1 { font-size: clamp(2rem, 7vw, 3.6rem); letter-spacing: -.045em; line-height: 1.1; }
+        .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: start; gap: 1rem; }
+        .card { border-radius: 1rem; }
+        .card h2 { line-height: 1.35; }
+        .track-row { width: 100%; gap: .75rem; background: transparent; border: 0; border-bottom: 1px solid var(--border); color: inherit; text-align: left; font: inherit; min-height: 44px; overflow-wrap: anywhere; }
+        .track-duration { flex: none; font-variant-numeric: tabular-nums; }
+        .player-bar { background: #101615; }
+        .player-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; }
+        .btn-ctrl { margin: 0; min-height: 44px; background: #2b3b36; }
+        .btn-ctrl:disabled { opacity: .55; cursor: default; }
+        button:focus-visible { outline: 2px solid #9de4cb; outline-offset: 3px; }
+        #trackList > p { color: var(--text-muted); line-height: 1.5; }
+        @media (max-width: 700px) { .grid { grid-template-columns: minmax(0, 1fr); } }
     </style>
 </head>
 <body>
     <header>
         <h1>SyncTrain OfflineMusic</h1>
-        <p style="font-size: 13px; color: var(--text-muted);">Fork Syncthing / SyncTrain avec Mode Proximité Hors-Ligne & Lecteur Audio Direct Aléatoire</p>
+        <p style="color: var(--text-muted);">Bibliothèque musicale et synchronisation sur le réseau local</p>
     </header>
 
-    <div class="grid">
+    <main class="grid">
         <div class="card">
-            <h2 style="font-size: 16px; margin-bottom: 8px;">Statut Réseau & Synchronisation Proximité</h2>
-            <div style="font-size: 13px; color: #10b981; font-weight: 700;">● Mode Proximité Décentralisé : Actif</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Fonctionne 100% sans connexion internet via réseau local ad-hoc.</div>
+            <h2 style="font-size: 16px; margin-bottom: 8px;">Sélection des morceaux</h2>
+            <p style="font-size: .875rem; color: var(--text-muted);">Cette interface affiche les titres disponibles sur le serveur local.</p>
 
             <div class="player-bar">
-                <div style="font-size: 11px; color: var(--text-muted);">En lecture aléatoire (Shuffle) :</div>
-                <div style="font-size: 16px; font-weight: 800; margin: 6px 0;" id="nowPlaying">La fin des box TV ?</div>
-                <div>
-                    <button class="btn-ctrl" onclick="alert('Morceau précédent')">⏮</button>
-                    <button class="btn-ctrl" style="background: #38bdf8; color: black;" onclick="togglePlay()">⏯ Play / Pause</button>
-                    <button class="btn-ctrl" onclick="randomTrack()">🔀 Aléatoire</button>
+                <div style="font-size: .875rem; color: var(--text-muted);">Morceau sélectionné</div>
+                <div style="font-size: 16px; font-weight: 800; margin: 6px 0;" id="nowPlaying" aria-live="polite">Aucun morceau sélectionné</div>
+                <div class="player-controls">
+                    <button type="button" class="btn-ctrl" id="previousTrack" disabled>Précédent</button>                    <button type="button" class="btn-ctrl" id="shuffleTracks" disabled>Au hasard</button>
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <h2 style="font-size: 16px; margin-bottom: 12px;">Pistes du Dossier Synchronisé (E:\Musique)</h2>
-            <div id="trackList"></div>
+            <h2 style="font-size: 16px; margin-bottom: 12px;">Bibliothèque locale</h2>
+            <div id="trackList" aria-live="polite"><p>Chargement des pistes…</p></div>
         </div>
-    </div>
+    </main>
 
     <script>
         let tracks = [];
+        let currentTrack = -1;
         async function load() {
-            const res = await fetch('/api/sync_music');
-            const d = await res.json();
-            tracks = d.tracks;
-            const tl = document.getElementById('trackList');
-            tl.innerHTML = tracks.map(t => `
-                <div class="track-row" onclick="playTrack('${t.title}')">
-                    <div>
-                        <strong>${t.title}</strong><br>
-                        <span style="font-size: 11px; color: #94a3b8;">${t.artist}</span>
-                    </div>
-                    <div>${t.duration}</div>
-                </div>
-            `).join('');
+            const list = document.getElementById('trackList');
+            try {
+                const response = await fetch('/api/sync_music');
+                if (!response.ok) throw new Error('Bibliothèque indisponible');
+                const data = await response.json();
+                tracks = Array.isArray(data.tracks) ? data.tracks : [];
+            } catch {
+                list.firstElementChild.textContent = 'Impossible de charger les pistes. Actualisez la page pour réessayer.';
+                return;
+            }
+
+            if (tracks.length === 0) {
+                list.firstElementChild.textContent = 'Aucune piste dans le dossier synchronisé.';
+                return;
+            }
+
+            list.replaceChildren(...tracks.map((track, index) => {
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'track-row';
+                row.addEventListener('click', () => playTrack(index));
+
+                const label = document.createElement('div');
+                const title = document.createElement('strong');
+                const artist = document.createElement('span');
+                title.textContent = track.title;
+                artist.textContent = track.artist;
+                label.append(title, document.createElement('br'), artist);
+
+                const duration = document.createElement('span');
+                duration.className = 'track-duration';
+                duration.textContent = track.duration;
+                row.append(label, duration);
+                return row;
+            }));
+            document.getElementById('shuffleTracks').disabled = false;
         }
 
-        function playTrack(title) { document.getElementById('nowPlaying').innerText = title; }
-        function randomTrack() {
-            const t = tracks[Math.floor(Math.random() * tracks.length)];
-            playTrack(t.title);
+        function playTrack(index) {
+            currentTrack = index;
+            document.getElementById('nowPlaying').textContent = tracks[index].title;
+            document.getElementById('previousTrack').disabled = index === 0;
         }
-        function togglePlay() { alert('Lecture / Pause'); }
+        function previousTrack() { if (currentTrack > 0) playTrack(currentTrack - 1); }
+        function randomTrack() {
+            if (tracks.length > 0) playTrack(Math.floor(Math.random() * tracks.length));
+        }
+        document.getElementById('previousTrack').addEventListener('click', previousTrack);
+        document.getElementById('shuffleTracks').addEventListener('click', randomTrack);
         window.onload = load;
     </script>
 </body>
