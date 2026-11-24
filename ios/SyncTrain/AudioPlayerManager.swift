@@ -1,4 +1,5 @@
 import AVFoundation
+import Combine
 import Foundation
 import MediaPlayer
 
@@ -74,7 +75,6 @@ final class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegat
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default)
-            try session.setActive(true)
         } catch {
             statusMessage = "Session audio limitée : \(error.localizedDescription)"
         }
@@ -140,7 +140,8 @@ final class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegat
             ) {
                 for url in items {
                     let ext = url.pathExtension.lowercased()
-                    if supportedExtensions.contains(ext) {
+                    if supportedExtensions.contains(ext),
+                       (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true {
                         foundURLs.append(url)
                     }
                 }
@@ -223,12 +224,13 @@ final class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegat
 
     func play(track: LocalTrack) {
         do {
-            try AVAudioSession.sharedInstance().setActive(true)
             let player = try AVAudioPlayer(contentsOf: track.url)
             player.delegate = self
-            player.prepareToPlay()
-            player.play()
+            guard player.prepareToPlay() else { throw CocoaError(.fileReadCorruptFile) }
+            try AVAudioSession.sharedInstance().setActive(true)
+            guard player.play() else { throw CocoaError(.fileReadUnknown) }
 
+            audioPlayer?.stop()
             audioPlayer = player
             currentTrack = track
             duration = player.duration
@@ -238,14 +240,23 @@ final class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegat
             startProgressTimer()
             updateNowPlayingInfo()
         } catch {
-            isPlaying = false
+            isPlaying = audioPlayer?.isPlaying ?? false
             statusMessage = "Impossible de lire \(track.title) : \(error.localizedDescription)"
         }
     }
 
     func resumeOrPlayFirst() {
         if let player = audioPlayer {
-            player.play()
+            do {
+                try AVAudioSession.sharedInstance().setActive(true)
+            } catch {
+                statusMessage = "La session audio est indisponible."
+                return
+            }
+            guard player.play() else {
+                statusMessage = "Impossible de reprendre la lecture."
+                return
+            }
             isPlaying = true
             startProgressTimer()
             updateNowPlayingInfo()
@@ -272,6 +283,7 @@ final class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegat
         duration = 0
         progressTimer?.invalidate()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     func togglePlayPause() {
@@ -367,9 +379,12 @@ final class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegat
     }
 
     func fetchRemoteSync(baseURLString: String) {
+        guard !isSyncingRemote else { return }
         let trimmed = baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty,
-              let baseURL = URL(string: trimmed.hasSuffix("/") ? String(trimmed.dropLast()) : trimmed) else {
+              let baseURL = URL(string: trimmed),
+              ["http", "https"].contains(baseURL.scheme?.lowercased() ?? ""),
+              baseURL.host != nil, baseURL.user == nil, baseURL.password == nil else {
             remoteSyncError = "Adresse serveur invalide (ex : http://192.168.1.25:8094)."
             return
         }
